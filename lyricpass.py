@@ -21,11 +21,11 @@ This is a modified version by r3nt0n integrated into bopscrk:
 https://github.com/r3nt0n/bopscrk
 """
 
-import argparse
+#import argparse
 import urllib.request
-import datetime
-import os
-import sys
+#import datetime
+#import os
+#import sys
 import re
 
 SITE = "https://www.lyrics.com/"
@@ -165,14 +165,14 @@ def build_urls(artist):
 
     return url_list
 
-def write_data(outfile, data):
-    """
-    Generic helper function to write text to a file
-    """
-    with open(outfile, "a") as open_file:
-        for line in data:
-            if line:
-                open_file.write(line + '\n')
+# def write_data(outfile, data):
+#     """
+#     Generic helper function to write text to a file
+#     """
+#     with open(outfile, "a") as open_file:
+#         for line in data:
+#             if line:
+#                 open_file.write(line + '\n')
 
 def scrape_lyrics(url_list):
     """
@@ -187,7 +187,7 @@ def scrape_lyrics(url_list):
     total = len(url_list)
 
     for url in url_list:
-        print("{}    Checking song {}/{}...       \r".format(BOPSCRK_INDENT,current, total), end="")
+        print("{}[+] Checking song {}/{}...       \r".format(BOPSCRK_INDENT,current, total), end="")
 
         with urllib.request.urlopen(url) as response:
             html = response.read().decode()
