@@ -16,6 +16,9 @@ wordlist.txt <cleaned passphrases>
 
 Tool by initstring. If you're into cracking complex passwords, check out
 github.com/initstring/passphrase-wordlist for more fun!
+
+This is a modified version by r3nt0n integrated into bopscrk:
+https://github.com/r3nt0n/bopscrk
 """
 
 import argparse
@@ -26,38 +29,39 @@ import sys
 import re
 
 SITE = "https://www.lyrics.com/"
-LYRIC_FILE = "raw-lyrics-{:%Y-%m-%d-%H.%M.%S}".format(datetime.datetime.now())
-PASS_FILE = "wordlist-{:%Y-%m-%d-%H.%M.%S}".format(datetime.datetime.now())
+# LYRIC_FILE = "raw-lyrics-{:%Y-%m-%d-%H.%M.%S}".format(datetime.datetime.now())  # r3nt0n: i don't need this file
+# PASS_FILE = "wordlist-{:%Y-%m-%d-%H.%M.%S}".format(datetime.datetime.now())  # r3nt0n: i don't need this file
+BOPSCRK_INDENT = "  "
 
+# r3nt0n: i don't need this function
+# def parse_args():
+#     """
+#     Handle user-passed parameters
+#     """
+#     desc = "Scrape song lyrics from wikia.com"
+#     parser = argparse.ArgumentParser(description=desc)
+#
+#     group = parser.add_mutually_exclusive_group(required=True)
+#     group.add_argument("-a", "--artist", type=str, action="store",
+#                        help="Single artist to scrape")
+#     group.add_argument("-i", "--infile", type=str, action="store",
+#                        help="File containing one artist per line to scrape")
+#
+#     parser.add_argument("--min", type=int, default=8,
+#                         help="Minimum passphrase length. Default=8")
+#     parser.add_argument("--max", type=int, default=40,
+#                         help="Minimum passphrase length. Default=40")
+#
+#     args = parser.parse_args()
+#
+#     if args.infile:
+#         if not os.access(args.infile, os.R_OK):
+#             print("[!] Cannot access input file, exiting")
+#             sys.exit()
+#
+#     return args
 
-def parse_args():
-    """
-    Handle user-passed parameters
-    """
-    desc = "Scrape song lyrics from wikia.com"
-    parser = argparse.ArgumentParser(description=desc)
-
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-a", "--artist", type=str, action="store",
-                       help="Single artist to scrape")
-    group.add_argument("-i", "--infile", type=str, action="store",
-                       help="File containing one artist per line to scrape")
-
-    parser.add_argument("--min", type=int, default=8,
-                        help="Minimum passphrase length. Default=8")
-    parser.add_argument("--max", type=int, default=40,
-                        help="Minimum passphrase length. Default=40")
-
-    args = parser.parse_args()
-
-    if args.infile:
-        if not os.access(args.infile, os.R_OK):
-            print("[!] Cannot access input file, exiting")
-            sys.exit()
-
-    return args
-
-def make_phrases(line, args):
+def make_phrases(line):
     """
     Cleans raw lyrics into usable passphrases
     """
@@ -102,24 +106,26 @@ def make_phrases(line, args):
     clean_lines.append(line)
 
     # Only keep items in the acceptable length
-    for item in clean_lines:
-        if args.max >= len(item) >= args.min:
-            final_lines.append(item)
+    # for item in clean_lines:
+    #     if args.max >= len(item) >= args.min:
+    #         final_lines.append(item)
+    final_lines = clean_lines
 
     return final_lines
 
-def parse_artists(args):
+def parse_artists(bopscrk_artist):
     """
     Return a list of song artists for parsing
+    r3nt0n: bopscrk always provides a list as arg, doesn't need to split or read the file here
     """
     whitelist = re.compile('[^a-zA-Z0-9-+]')
     artists = []
 
-    if args.artist:
-        raw_artists = [args.artist,]
-    else:
-        with open(args.infile, encoding="utf-8", errors="ignore") as infile:
-            raw_artists = infile.readlines()
+    # if args.artist:
+    raw_artists = [bopscrk_artist,]
+    # else:
+    #     with open(args.infile, encoding="utf-8", errors="ignore") as infile:
+    #         raw_artists = infile.readlines()
 
     for artist in raw_artists:
         artist = artist.replace(" ", "+")
@@ -145,15 +151,14 @@ def build_urls(artist):
     song_ids = re.findall(regex, html)
 
     if not_found in html:
-        print("[!] Artist {} not found, skipping".format(artist))
+        print("{}[!] Artist {} not found, skipping".format(BOPSCRK_INDENT, artist))
 
         # Clear out the "suggested" songs it finds in this scenario
         song_ids = []
     elif not song_ids:
-        print("[!] No songs found for {}, skipping".format(artist))
+        print("{}[!] No songs found for {}, skipping".format(BOPSCRK_INDENT,artist))
     else:
-        print("[+] Found {} songs for artists {}"
-              .format(len(song_ids), artist))
+        print("{}[+] Found {} songs for artists {}".format(BOPSCRK_INDENT,len(song_ids), artist))
 
     # The "print" URL shows us the easiest to decode version of the song
     url_list = [SITE + "db-print.php?id=" + id for id in song_ids]
@@ -182,7 +187,7 @@ def scrape_lyrics(url_list):
     total = len(url_list)
 
     for url in url_list:
-        print("Checking song {}/{}...       \r".format(current, total), end="")
+        print("{}    Checking song {}/{}...       \r".format(BOPSCRK_INDENT,current, total), end="")
 
         response = requests.get(url)
         html = response.text
@@ -191,12 +196,12 @@ def scrape_lyrics(url_list):
 
         # We should always have a match... but if not, skip this url
         if not lyrics:
-            print("\n[!] Found no lyrics at {}".format(url))
+            print("\n{}[!] Found no lyrics at {}".format(BOPSCRK_INDENT,url))
             continue
 
         lyrics = re.split(newline, lyrics[0])
 
-        write_data(LYRIC_FILE, lyrics)
+        #write_data(LYRIC_FILE, lyrics)  # r3nt0n: i don't need this file
 
         deduped_lyrics.update(lyrics)
 
@@ -205,12 +210,13 @@ def scrape_lyrics(url_list):
     return deduped_lyrics
 
 
-def main():
+#def main():
+def lyricpass(bopscrk_artist):
     """
     Main program function
     """
-    args = parse_args()
-    artists = parse_artists(args)
+    #args = parse_args()
+    artists = parse_artists(bopscrk_artist)
 
     raw_words = set()
     final_phrases = set()
@@ -220,7 +226,7 @@ def main():
     # file as it goes, which may come in handy if the program exits early
     # due to an error.
     for artist in artists:
-        print("[+] Looking up artist {}".format(artist))
+        #print("[+] Looking up artist {}".format(artist))  # r3nt0n: shutting up prints
         url_list = build_urls(artist)
         if not url_list:
             continue
@@ -229,17 +235,19 @@ def main():
     # Now we will apply some rules to clean all the raw lyrics into a base
     # passphrase file that can be used for cracking.
     for lyric in raw_words:
-        phrases = make_phrases(lyric, args)
+        phrases = make_phrases(lyric)
         final_phrases.update(phrases)
 
+    return final_phrases
+
     # Write out the cleaned passphrases to a file
-    write_data(PASS_FILE, final_phrases)
+    # write_data(PASS_FILE, final_phrases)
 
-    print("[+] All done!")
-    print("")
-    print("Raw lyrics: {}".format(LYRIC_FILE))
-    print("Passphrases: {}".format(PASS_FILE))
+    # print("[+] All done!")
+    # print("")
+    # print("Raw lyrics: {}".format(LYRIC_FILE))
+    # print("Passphrases: {}".format(PASS_FILE))
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
